@@ -40,15 +40,64 @@ const Utils = {
         });
     },
 
-    // Format date for tournament export
+    // Format date for filenames
     formatDate: function() {
         const date = new Date();
-        return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}_${hours}-${minutes}`;
+    },
+
+    // Format date for display
+    formatDisplayDate: function() {
+        const date = new Date();
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     },
 
     // Generate unique ID
     generateId: function() {
         return Math.random().toString(36).substr(2, 9);
+    },
+
+    // Download blob as file
+    downloadBlob: function(blob, filename) {
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    },
+
+    // Show loading spinner
+    showSpinner: function(containerId) {
+        const container = document.getElementById(containerId);
+        if (container) {
+            const spinner = document.createElement('div');
+            spinner.className = 'spinner';
+            spinner.id = 'spinner';
+            container.appendChild(spinner);
+        }
+    },
+
+    // Hide loading spinner
+    hideSpinner: function() {
+        const spinner = document.getElementById('spinner');
+        if (spinner) {
+            spinner.remove();
+        }
     }
 };
 

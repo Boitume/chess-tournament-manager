@@ -9,16 +9,18 @@ class Tournament {
         this.completed = false;
         this.tournamentId = Utils.generateId();
         this.startDate = null;
+        this.tournamentName = '';
     }
 
     // Initialize tournament with players and rounds
-    initialize(playersData, numberOfRounds) {
+    initialize(playersData, numberOfRounds, name = '') {
         this.players = playersData;
         this.rounds = numberOfRounds;
         this.currentRound = 0;
         this.pairings = [];
         this.completed = false;
         this.startDate = new Date();
+        this.tournamentName = name || `Tournament ${Utils.formatDate()}`;
         
         // Add BYE if odd number of players
         if (this.players.length % 2 !== 0) {
@@ -58,10 +60,25 @@ class Tournament {
         return sortedPlayers[0];
     }
 
+    // Get tournament summary
+    getSummary() {
+        return {
+            tournamentId: this.tournamentId,
+            tournamentName: this.tournamentName,
+            startDate: this.startDate,
+            rounds: this.rounds,
+            currentRound: this.currentRound,
+            totalPlayers: this.getActivePlayers().length,
+            completed: this.completed,
+            winner: this.completed ? this.getWinner() : null
+        };
+    }
+
     // Export tournament data
     exportData() {
         return {
             tournamentId: this.tournamentId,
+            tournamentName: this.tournamentName,
             startDate: this.startDate,
             rounds: this.rounds,
             currentRound: this.currentRound,
@@ -80,6 +97,7 @@ class Tournament {
         this.completed = false;
         this.tournamentId = Utils.generateId();
         this.startDate = null;
+        this.tournamentName = '';
     }
 }
 
