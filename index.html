@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Tournament Manager - South African Ratings</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>♞ South African Chess Tournament Manager ♞</h1>
+        
+        <!-- Tournament Setup Section -->
+        <div class="input-section">
+            <h2>Tournament Setup</h2>
+            <div class="form-group">
+                <label for="players">Enter Players (Name, Rating - one per line)</label>
+                <textarea id="players" placeholder="Example:&#10;John Doe, 1850&#10;Jane Smith, 1720"></textarea>
+                <div class="help-text">Format: Name, Rating (one player per line)</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="rounds">Number of Rounds</label>
+                <input type="number" id="rounds" min="1" max="10" value="5">
+            </div>
+            
+            <button onclick="tournamentApp.initialize()">Start Tournament</button>
+            <button class="danger" onclick="tournamentApp.reset()">Reset</button>
+        </div>
+
+        <!-- Tournament Content -->
+        <div id="tournamentContent" style="display: none;">
+            <!-- Dynamic content loaded via JavaScript -->
+        </div>
+
+        <!-- Standings Content -->
+        <div id="standingsContent" style="display: none;">
+            <!-- Dynamic content loaded via JavaScript -->
+        </div>
+    </div>
+
+    <script src="js/utils.js"></script>
+    <script src="js/tournament.js"></script>
+    <script src="js/pairing.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
