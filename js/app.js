@@ -502,9 +502,14 @@ class TournamentApp {
 
     endTournament() {
         this.tournament.completed = true;
+        
+        // Recalculate tie-breakers before finalizing
+        this.tournament.calculateSonnebornBerger();
+        
         TournamentDB.saveTournament(this.tournament.exportData()).catch(error => {
             console.error('Error saving tournament:', error);
         });
+        
         this.showWinner();
         this.showStandings();
     }
@@ -521,9 +526,24 @@ class TournamentApp {
         const winnerDiv = document.createElement('div');
         winnerDiv.id = 'winnerAnnouncement';
         winnerDiv.className = 'winner-announcement';
+        
+        // Check if tie-breakers were used
+        const sortedPlayers = Utils.sortPlayers(this.tournament.players);
+        let tieBreakerText = '';
+        
+        if (sortedPlayers.length > 1 && sortedPlayers[0].score === sortedPlayers[1].score) {
+            if (sortedPlayers[0].sonnebornBerger !== sortedPlayers[1].sonnebornBerger) {
+                tieBreakerText = `<p class="tie-breaker-note">(Wins on Sonneborn-Berger: ${sortedPlayers[0].sonnebornBerger.toFixed(2)} vs ${sortedPlayers[1].sonnebornBerger.toFixed(2)})</p>`;
+            } else if (sortedPlayers[0].blackWins !== sortedPlayers[1].blackWins) {
+                tieBreakerText = `<p class="tie-breaker-note">(Wins on Black Wins: ${sortedPlayers[0].blackWins} vs ${sortedPlayers[1].blackWins})</p>`;
+            }
+        }
+        
         winnerDiv.innerHTML = `
             <h2>🏆 TOURNAMENT WINNER 🏆</h2>
-            <p>${winner.name} - ${winner.score} POINTS</p>
+            <p class="winner-name">${winner.name}</p>
+            <p class="winner-score">${winner.score} POINTS</p>
+            ${tieBreakerText}
         `;
         
         document.getElementById('tournamentContent').appendChild(winnerDiv);
@@ -535,6 +555,9 @@ class TournamentApp {
             return;
         }
         
+        // Recalculate tie-breakers before showing standings
+        this.tournament.calculateSonnebornBerger();
+        
         document.getElementById('tournamentContent').style.display = 'none';
         document.getElementById('standingsContent').style.display = 'block';
         
@@ -542,6 +565,9 @@ class TournamentApp {
         
         let html = `
             <h2>TOURNAMENT STANDINGS</h2>
+            <div class="tie-breaker-info">
+                <p><small>🔍 TIE-BREAKERS: Score > Sonneborn-Berger > Black Wins > Rating</small></p>
+            </div>
             <div class="action-buttons">
                 <button class="secondary-btn" onclick="tournamentApp.hideStandings()">← BACK TO GAMES</button>
                 <button class="secondary-btn" onclick="tournamentApp.exportToExcel()">📊 EXCEL</button>
@@ -555,6 +581,8 @@ class TournamentApp {
                             <th>PLAYER</th>
                             <th>RATING</th>
                             <th>POINTS</th>
+                            <th>BLACK WINS</th>
+                            <th>SB</th>
                             <th>OPPONENTS</th>
                         </tr>
                     </thead>
@@ -562,12 +590,17 @@ class TournamentApp {
         `;
         
         sortedPlayers.forEach((player, index) => {
+            const isWinner = index === 0 && this.tournament.completed;
+            const rankDisplay = isWinner ? '🏆' : `#${index + 1}`;
+            
             html += `
-                <tr ${index === 0 && this.tournament.completed ? 'class="winner-row"' : ''}>
-                    <td>#${index + 1}</td>
-                    <td>${player.name}</td>
+                <tr ${isWinner ? 'class="winner-row"' : ''}>
+                    <td>${rankDisplay}</td>
+                    <td><strong>${player.name}</strong></td>
                     <td>${player.rating}</td>
                     <td>${player.score.toFixed(1)}</td>
+                    <td>${player.blackWins || 0}</td>
+                    <td>${player.sonnebornBerger ? player.sonnebornBerger.toFixed(2) : '0.00'}</td>
                     <td>${player.opponents.join(', ') || '—'}</td>
                 </tr>
             `;
@@ -580,6 +613,24 @@ class TournamentApp {
         `;
         
         html += this.getPairingSummary();
+        
+        // Add tie-breaker explanation if there's a tie
+        if (sortedPlayers.length > 1 && sortedPlayers[0].score === sortedPlayers[1].score && this.tournament.completed) {
+            html += `
+                <div class="tie-breaker-explanation">
+                    <h4>🔍 TIE-BREAKER EXPLANATION</h4>
+                    <p><strong>${sortedPlayers[0].name}</strong> wins on:</p>
+                    <ul>
+                        ${sortedPlayers[0].sonnebornBerger !== sortedPlayers[1].sonnebornBerger ? 
+                            `<li>Sonneborn-Berger: ${sortedPlayers[0].sonnebornBerger.toFixed(2)} vs ${sortedPlayers[1].sonnebornBerger.toFixed(2)}</li>` : ''}
+                        ${sortedPlayers[0].blackWins !== sortedPlayers[1].blackWins ? 
+                            `<li>Black Wins: ${sortedPlayers[0].blackWins} vs ${sortedPlayers[1].blackWins}</li>` : ''}
+                        ${sortedPlayers[0].rating !== sortedPlayers[1].rating ? 
+                            `<li>Higher Rating: ${sortedPlayers[0].rating} vs ${sortedPlayers[1].rating}</li>` : ''}
+                    </ul>
+                </div>
+            `;
+        }
         
         document.getElementById('standingsContent').innerHTML = html;
     }
@@ -613,6 +664,9 @@ class TournamentApp {
             alert('NO ACTIVE TOURNAMENT');
             return;
         }
+        
+        // Recalculate tie-breakers before saving
+        this.tournament.calculateSonnebornBerger();
         await TournamentDB.exportToFile(this.tournament.exportData());
     }
 
@@ -642,13 +696,16 @@ class TournamentApp {
             return;
         }
         
+        // Recalculate tie-breakers before export
+        this.tournament.calculateSonnebornBerger();
+        
         const sortedPlayers = Utils.sortPlayers(this.tournament.players);
         
-        let csvContent = "RANK,PLAYER,RATING,POINTS,OPPONENTS\n";
+        let csvContent = "RANK,PLAYER,RATING,POINTS,BLACK WINS,SONNEBORN-BERGER,OPPONENTS\n";
         
         sortedPlayers.forEach((player, index) => {
             const opponents = player.opponents.join('; ') || 'None';
-            csvContent += `${index + 1},"${player.name}",${player.rating},${player.score},"${opponents}"\n`;
+            csvContent += `${index + 1},"${player.name}",${player.rating},${player.score},${player.blackWins || 0},${player.sonnebornBerger ? player.sonnebornBerger.toFixed(2) : 0},"${opponents}"\n`;
         });
         
         csvContent += "\n\nROUND RESULTS\n";
@@ -679,6 +736,9 @@ class TournamentApp {
             return;
         }
         
+        // Recalculate tie-breakers before export
+        this.tournament.calculateSonnebornBerger();
+        
         const sortedPlayers = Utils.sortPlayers(this.tournament.players);
         const winner = this.tournament.getWinner();
         const date = Utils.formatDisplayDate();
@@ -690,32 +750,50 @@ class TournamentApp {
                 <title>Chess Tournament Results</title>
                 <style>
                     body { font-family: 'Arial', sans-serif; background: #000; color: #fff; padding: 20px; }
-                    h1 { color: #00ff88; text-align: center; }
-                    h2 { color: #ffaa00; border-bottom: 2px solid #333; }
+                    h1 { color: #00ff88; text-align: center; font-size: 28px; }
+                    h2 { color: #ffaa00; border-bottom: 2px solid #333; padding-bottom: 10px; }
+                    h3 { color: #00ff88; margin-top: 30px; }
                     table { border-collapse: collapse; width: 100%; margin: 20px 0; }
-                    th { background: #00ff88; color: #000; padding: 12px; }
+                    th { background: #00ff88; color: #000; padding: 12px; text-align: left; }
                     td { padding: 10px; border-bottom: 1px solid #333; color: #ccc; }
-                    .winner { background: rgba(0, 255, 136, 0.2); }
+                    .winner { background: rgba(0, 255, 136, 0.2); font-weight: bold; }
+                    .tie-breaker-info { color: #ffaa00; font-size: 12px; margin: 10px 0; }
+                    .champion { text-align: center; margin: 30px 0; }
+                    .champion h2 { color: #ffaa00; font-size: 32px; border: none; }
                 </style>
             </head>
             <body>
                 <h1>♞ CHESS TOURNAMENT RESULTS ♞</h1>
                 <p><strong>Date:</strong> ${date}</p>
+                <p><strong>Tournament ID:</strong> ${this.tournament.tournamentId}</p>
                 <p><strong>Players:</strong> ${this.tournament.getActivePlayers().length}</p>
                 <p><strong>Rounds:</strong> ${this.tournament.rounds}</p>
+                <p class="tie-breaker-info"><strong>Tie-breakers:</strong> Score > Sonneborn-Berger > Black Wins > Rating</p>
                 
-                ${this.tournament.completed ? 
-                    `<h2>🏆 WINNER: ${winner.name} (${winner.score} POINTS)</h2>` : ''}
+                ${this.tournament.completed ? `
+                    <div class="champion">
+                        <h2>🏆 WINNER: ${winner.name} (${winner.score} POINTS) 🏆</h2>
+                    </div>
+                ` : ''}
                 
                 <h2>FINAL STANDINGS</h2>
                 <table>
-                    <tr><th>RANK</th><th>PLAYER</th><th>RATING</th><th>POINTS</th></tr>
+                    <tr>
+                        <th>RANK</th>
+                        <th>PLAYER</th>
+                        <th>RATING</th>
+                        <th>POINTS</th>
+                        <th>BLACK WINS</th>
+                        <th>SB</th>
+                    </tr>
                     ${sortedPlayers.map((p, i) => `
                         <tr${i === 0 && this.tournament.completed ? ' class="winner"' : ''}>
                             <td>${i+1}</td>
                             <td>${p.name}</td>
                             <td>${p.rating}</td>
                             <td>${p.score}</td>
+                            <td>${p.blackWins || 0}</td>
+                            <td>${p.sonnebornBerger ? p.sonnebornBerger.toFixed(2) : '0.00'}</td>
                         </tr>
                     `).join('')}
                 </table>
@@ -734,6 +812,17 @@ class TournamentApp {
                         </tr>
                     `).join('')}
                 </table>
+                
+                ${sortedPlayers.length > 1 && sortedPlayers[0].score === sortedPlayers[1].score && this.tournament.completed ? `
+                    <h2>TIE-BREAKER DETAILS</h2>
+                    <p><strong>${sortedPlayers[0].name}</strong> wins on:</p>
+                    <ul>
+                        ${sortedPlayers[0].sonnebornBerger !== sortedPlayers[1].sonnebornBerger ? 
+                            `<li>Sonneborn-Berger: ${sortedPlayers[0].sonnebornBerger.toFixed(2)} vs ${sortedPlayers[1].sonnebornBerger.toFixed(2)}</li>` : ''}
+                        ${sortedPlayers[0].blackWins !== sortedPlayers[1].blackWins ? 
+                            `<li>Black Wins: ${sortedPlayers[0].blackWins} vs ${sortedPlayers[1].blackWins}</li>` : ''}
+                    </ul>
+                ` : ''}
             </body>
             </html>
         `;

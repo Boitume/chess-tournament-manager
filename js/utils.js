@@ -8,7 +8,9 @@ const Utils = {
                 rating: parseInt(rating) || 0,
                 score: 0,
                 opponents: [],
-                colors: []
+                colors: [],
+                blackWins: 0, // Track wins with black pieces
+                sonnebornBerger: 0 // Tie-breaker
             };
         }).filter(p => p.name && !isNaN(p.rating));
     },
@@ -27,11 +29,41 @@ const Utils = {
                total === 1;
     },
 
+    // Sort players with tie-breakers
     sortPlayers: function(players) {
         return [...players].filter(p => p.name !== 'BYE').sort((a, b) => {
+            // First by score
             if (b.score !== a.score) return b.score - a.score;
+            
+            // Then by Sonneborn-Berger (sum of opponents' scores they beat)
+            if (b.sonnebornBerger !== a.sonnebornBerger) return b.sonnebornBerger - a.sonnebornBerger;
+            
+            // Then by number of black wins
+            if (b.blackWins !== a.blackWins) return b.blackWins - a.blackWins;
+            
+            // Finally by rating
             return b.rating - a.rating;
         });
+    },
+
+    // Calculate Sonneborn-Berger tie-breaker
+    calculateSonnebornBerger: function(player, allPlayers) {
+        let sb = 0;
+        player.opponents.forEach(oppName => {
+            const opponent = allPlayers.find(p => p.name === oppName);
+            if (opponent) {
+                // Add opponent's score if player beat them
+                const gameIndex = player.opponents.lastIndexOf(oppName);
+                const color = player.colors[gameIndex];
+                const isWin = (color === 'W' && player.score > opponent.score) || 
+                             (color === 'B' && player.score > opponent.score);
+                
+                if (isWin) {
+                    sb += opponent.score;
+                }
+            }
+        });
+        return sb;
     },
 
     formatDate: function() {
