@@ -1,7 +1,7 @@
 // IndexedDB wrapper for offline storage
 const TournamentDB = {
     dbName: 'TournamentDB',
-    dbVersion: 1,
+    dbVersion: 2, // Increment version for schema change
     db: null,
 
     // Initialize database
@@ -23,22 +23,25 @@ const TournamentDB = {
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
                 
-                // Create stores if they don't exist
-                if (!db.objectStoreNames.contains('tournaments')) {
-                    db.createObjectStore('tournaments', { keyPath: 'id' });
+                // Delete old stores if they exist
+                if (db.objectStoreNames.contains('tournaments')) {
+                    db.deleteObjectStore('tournaments');
+                }
+                if (db.objectStoreNames.contains('players')) {
+                    db.deleteObjectStore('players');
+                }
+                if (db.objectStoreNames.contains('settings')) {
+                    db.deleteObjectStore('settings');
+                }
+                if (db.objectStoreNames.contains('autoSave')) {
+                    db.deleteObjectStore('autoSave');
                 }
                 
-                if (!db.objectStoreNames.contains('players')) {
-                    db.createObjectStore('players', { keyPath: 'id', autoIncrement: true });
-                }
-                
-                if (!db.objectStoreNames.contains('settings')) {
-                    db.createObjectStore('settings', { keyPath: 'key' });
-                }
-                
-                if (!db.objectStoreNames.contains('autoSave')) {
-                    db.createObjectStore('autoSave', { keyPath: 'timestamp' });
-                }
+                // Create stores with proper key paths
+                db.createObjectStore('tournaments', { keyPath: 'tournamentId' });
+                db.createObjectStore('players', { keyPath: 'id', autoIncrement: true });
+                db.createObjectStore('settings', { keyPath: 'key' });
+                db.createObjectStore('autoSave', { keyPath: 'id' }); // Use 'id' as key path
             };
         });
     },
@@ -60,6 +63,11 @@ const TournamentDB = {
             // Add timestamp
             tournament.lastModified = new Date().toISOString();
             
+            // Make sure tournament has an ID
+            if (!tournament.tournamentId) {
+                tournament.tournamentId = Utils.generateId();
+            }
+            
             const request = store.put(tournament);
             
             request.onsuccess = () => {
@@ -67,7 +75,10 @@ const TournamentDB = {
                 resolve(request.result);
             };
             
-            request.onerror = () => reject(request.error);
+            request.onerror = (error) => {
+                console.error('Error saving tournament:', error);
+                reject(error);
+            };
         });
     },
 
@@ -118,9 +129,9 @@ const TournamentDB = {
             const store = transaction.objectStore('autoSave');
             
             const autoSaveData = {
+                id: 'current', // Use 'id' as key
                 timestamp: Date.now(),
-                state: state,
-                id: 'current'
+                state: state
             };
             
             const request = store.put(autoSaveData);
@@ -130,7 +141,10 @@ const TournamentDB = {
                 resolve();
             };
             
-            request.onerror = () => reject(request.error);
+            request.onerror = (error) => {
+                console.error('Auto-save error:', error);
+                reject(error);
+            };
         });
     },
 

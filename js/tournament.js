@@ -14,12 +14,21 @@ class Tournament {
 
     // Initialize tournament with players and rounds
     initialize(playersData, numberOfRounds, name = '') {
-        this.players = playersData;
+        // Create deep copies of players to avoid reference issues
+        this.players = playersData.map(p => ({
+            name: p.name,
+            rating: p.rating,
+            score: 0,
+            opponents: [],
+            colors: [],
+            id: Utils.generateId() // Add unique ID for database
+        }));
+        
         this.rounds = numberOfRounds;
         this.currentRound = 0;
         this.pairings = [];
         this.completed = false;
-        this.startDate = new Date();
+        this.startDate = new Date().toISOString();
         this.tournamentName = name || `Tournament ${Utils.formatDate()}`;
         
         // Add BYE if odd number of players
@@ -29,7 +38,8 @@ class Tournament {
                 rating: 0, 
                 score: 0, 
                 opponents: [], 
-                colors: [] 
+                colors: [],
+                id: 'BYE'
             });
         }
         
@@ -46,18 +56,27 @@ class Tournament {
 
     // Update player scores after a game
     updateScores(whitePlayer, blackPlayer, whiteScore, blackScore) {
-        whitePlayer.score += whiteScore;
-        blackPlayer.score += blackScore;
-        whitePlayer.opponents.push(blackPlayer.name);
-        blackPlayer.opponents.push(whitePlayer.name);
-        whitePlayer.colors.push('W');
-        blackPlayer.colors.push('B');
+        // Find the actual player objects in the array
+        const whiteIndex = this.players.findIndex(p => p.name === whitePlayer.name);
+        const blackIndex = this.players.findIndex(p => p.name === blackPlayer.name);
+        
+        if (whiteIndex !== -1) {
+            this.players[whiteIndex].score += whiteScore;
+            this.players[whiteIndex].opponents.push(blackPlayer.name);
+            this.players[whiteIndex].colors.push('W');
+        }
+        
+        if (blackIndex !== -1) {
+            this.players[blackIndex].score += blackScore;
+            this.players[blackIndex].opponents.push(whitePlayer.name);
+            this.players[blackIndex].colors.push('B');
+        }
     }
 
     // Get tournament winner
     getWinner() {
         const sortedPlayers = Utils.sortPlayers(this.players);
-        return sortedPlayers[0];
+        return sortedPlayers[0] || { name: 'No winner', score: 0 };
     }
 
     // Get tournament summary
