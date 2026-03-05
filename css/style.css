@@ -659,3 +659,236 @@ tr:hover td {
     padding: 10px 20px;
     margin: 0 5px;
 }
+/* Add to the existing style.css */
+
+/* Tournament Controls - Fix button display */
+.tournament-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.tournament-controls button {
+    flex: 1;
+    min-width: 120px;
+}
+
+#nextRoundBtn {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+#nextRoundBtn:hover {
+    background: #00cc6a;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0, 255, 136, 0.3);
+}
+
+/* Standings button fix */
+.secondary-btn {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+}
+
+.secondary-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+}
+
+/* Action buttons in standings */
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px 0;
+    justify-content: center;
+}
+
+.action-buttons button {
+    flex: 1;
+    min-width: 100px;
+}
+
+/* Help text */
+.help-text {
+    color: var(--text-muted);
+    font-size: 14px;
+    text-align: center;
+    margin-top: 20px;
+    padding: 10px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+/* Confirmation messages */
+.auto-save-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    padding: 15px 25px;
+    border-radius: 30px;
+    font-weight: 600;
+    animation: slideIn 0.3s, fadeOut 0.3s 2.7s;
+    z-index: 1000;
+    box-shadow: 0 5px 20px rgba(0, 255, 136, 0.3);
+    max-width: 90%;
+    word-break: break-word;
+    text-align: center;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    .tournament-controls {
+        flex-direction: column;
+    }
+    
+    .tournament-controls button {
+        width: 100%;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .action-buttons button {
+        width: 100%;
+    }
+    
+    .auto-save-indicator {
+        left: 20px;
+        right: 20px;
+        bottom: 10px;
+        text-align: center;
+        font-size: 14px;
+    }
+}
+
+/* Winner announcement fix */
+.winner-announcement {
+    background: linear-gradient(135deg, var(--accent-primary), #00cc6a);
+    color: var(--bg-primary);
+    padding: 30px;
+    border-radius: 15px;
+    text-align: center;
+    margin: 20px 0;
+    animation: pulse 2s infinite;
+    border: 2px solid var(--accent-tertiary);
+}
+
+.winner-announcement h2 {
+    color: var(--bg-primary);
+    border: none;
+    margin: 0 0 10px 0;
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.winner-announcement p {
+    font-size: clamp(1.2rem, 4vw, 1.5rem);
+    font-weight: 800;
+}
+
+/* Disabled button state */
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+button:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Result badges */
+.result-badge {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+    min-width: 80px;
+    text-align: center;
+}
+
+.bye-badge {
+    background: var(--warning);
+    color: var(--bg-primary);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 14px;
+    display: inline-block;
+    margin-top: 5px;
+}
+
+/* Completed pairing display */
+.completed-pairing {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    width: 100%;
+}
+
+/* Table styles fix */
+.standings-table-container {
+    overflow-x: auto;
+    margin: 20px 0;
+    border-radius: 15px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+th {
+    background: var(--bg-primary);
+    color: var(--accent-primary);
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+}
+
+td {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+}
+
+tr:hover td {
+    background: var(--bg-secondary);
+}
+
+.winner-row {
+    background: rgba(0, 255, 136, 0.1);
+}
+
+.winner-row td {
+    color: var(--accent-primary);
+    font-weight: 600;
+}

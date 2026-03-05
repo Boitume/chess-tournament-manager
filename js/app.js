@@ -58,7 +58,6 @@ class TournamentApp {
 
     addPlayerField(name = '', rating = '') {
         const container = document.getElementById('player-fields');
-        const playerCount = container.children.length;
         
         const playerRow = document.createElement('div');
         playerRow.className = 'player-row';
@@ -223,7 +222,12 @@ class TournamentApp {
     showTournamentContent() {
         document.getElementById('tournamentContent').style.display = 'block';
         document.getElementById('standingsContent').style.display = 'none';
-        document.getElementById('winnerAnnouncement')?.remove();
+        
+        // Remove any existing winner announcement
+        const existingWinner = document.getElementById('winnerAnnouncement');
+        if (existingWinner) {
+            existingWinner.remove();
+        }
     }
 
     displayRound(round) {
@@ -236,11 +240,10 @@ class TournamentApp {
             </div>
 
             <div class="tournament-controls">
-                <button id="nextRoundBtn" class="primary-btn" onclick="tournamentApp.nextRound()" 
-                    ${this.tournament.completed ? 'disabled' : ''}>
+                <button id="nextRoundBtn" class="primary-btn" onclick="tournamentApp.nextRound()">
                     NEXT ROUND →
                 </button>
-                <button class="secondary-btn" onclick="tournamentApp.showStandings()">STANDINGS</button>
+                <button class="secondary-btn" onclick="tournamentApp.showStandings()">📊 STANDINGS</button>
                 <button class="secondary-btn" onclick="tournamentApp.saveToFile()">💾 SAVE</button>
             </div>
 
@@ -250,13 +253,28 @@ class TournamentApp {
         content.innerHTML = html;
         this.renderPairings(round);
         
+        // Check if all games are completed
         const roundPairings = this.tournament.pairings[round - 1];
         const allCompleted = roundPairings.every(p => p.completed);
         
-        if (!allCompleted || round === this.tournament.rounds) {
-            document.getElementById('nextRoundBtn').style.display = 'none';
+        // Show/hide next round button based on completion
+        const nextRoundBtn = document.getElementById('nextRoundBtn');
+        if (nextRoundBtn) {
+            if (allCompleted && round < this.tournament.rounds) {
+                nextRoundBtn.style.display = 'inline-block';
+            } else if (round === this.tournament.rounds) {
+                if (allCompleted) {
+                    nextRoundBtn.style.display = 'none';
+                    this.endTournament();
+                } else {
+                    nextRoundBtn.style.display = 'none';
+                }
+            } else {
+                nextRoundBtn.style.display = 'none';
+            }
         }
         
+        // Show winner if tournament completed
         if (this.tournament.completed) {
             this.showWinner();
         }
@@ -286,7 +304,7 @@ class TournamentApp {
             }
         });
         
-        html += `<p class="help-text">WIN=1, DRAW=0.5, LOSS=0</p>`;
+        html += `<p class="help-text">WIN = 1 | DRAW = 0.5 | LOSS = 0</p>`;
         pairingsDiv.innerHTML = html;
         
         // Restore any pending scores
@@ -389,10 +407,12 @@ class TournamentApp {
             return;
         }
         
+        // Update pairing
         pairing.whiteScore = whiteScore;
         pairing.blackScore = blackScore;
         pairing.completed = true;
         
+        // Update player scores
         this.tournament.updateScores(pairing.white, pairing.black, whiteScore, blackScore);
         
         // Clear pending scores for this pairing
@@ -400,30 +420,61 @@ class TournamentApp {
             delete this.pendingScores[this.tournament.currentRound][pairingIndex];
         }
         
+        // Save to database
         TournamentDB.saveTournament(this.tournament.exportData());
         
-        this.displayRound(this.tournament.currentRound);
+        // Show confirmation
+        this.showSubmissionConfirmation(pairing);
         
-        const allCompleted = roundPairings.every(p => p.completed);
-        if (allCompleted && this.tournament.currentRound < this.tournament.rounds) {
-            document.getElementById('nextRoundBtn').style.display = 'inline-block';
-        } else if (allCompleted && this.tournament.currentRound === this.tournament.rounds) {
-            this.endTournament();
-        }
+        // Refresh display
+        this.displayRound(this.tournament.currentRound);
+    }
+
+    showSubmissionConfirmation(pairing) {
+        // Create temporary confirmation message
+        const confirmation = document.createElement('div');
+        confirmation.className = 'auto-save-indicator';
+        confirmation.style.background = '#00ff88';
+        confirmation.style.color = '#000';
+        confirmation.textContent = `✓ RESULTS RECORDED: ${pairing.white.name} ${pairing.whiteScore}-${pairing.blackScore} ${pairing.black.name}`;
+        document.body.appendChild(confirmation);
+        
+        setTimeout(() => {
+            confirmation.remove();
+        }, 3000);
     }
 
     nextRound() {
+        if (this.tournament.completed) {
+            alert('TOURNAMENT ALREADY COMPLETED!');
+            return;
+        }
+        
         if (this.tournament.currentRound >= this.tournament.rounds) {
             this.endTournament();
             return;
         }
         
+        // Generate next round pairings
         const nextRoundPairings = this.pairingSystem.generateNextRound();
         this.tournament.pairings.push(nextRoundPairings);
         this.tournament.currentRound++;
         
+        // Save to database
         TournamentDB.saveTournament(this.tournament.exportData());
         
+        // Show confirmation
+        const confirmation = document.createElement('div');
+        confirmation.className = 'auto-save-indicator';
+        confirmation.style.background = '#ffaa00';
+        confirmation.textContent = `✓ MOVING TO ROUND ${this.tournament.currentRound}`;
+        document.body.appendChild(confirmation);
+        
+        setTimeout(() => {
+            confirmation.remove();
+        }, 2000);
+        
+        // Display new round
         this.displayRound(this.tournament.currentRound);
     }
 
@@ -437,6 +488,12 @@ class TournamentApp {
     showWinner() {
         const winner = this.tournament.getWinner();
         
+        // Remove any existing winner announcement
+        const existingWinner = document.getElementById('winnerAnnouncement');
+        if (existingWinner) {
+            existingWinner.remove();
+        }
+        
         const winnerDiv = document.createElement('div');
         winnerDiv.id = 'winnerAnnouncement';
         winnerDiv.className = 'winner-announcement';
@@ -449,6 +506,11 @@ class TournamentApp {
     }
 
     showStandings() {
+        if (!this.tournament) {
+            alert('NO ACTIVE TOURNAMENT');
+            return;
+        }
+        
         document.getElementById('tournamentContent').style.display = 'none';
         document.getElementById('standingsContent').style.display = 'block';
         
@@ -457,7 +519,7 @@ class TournamentApp {
         let html = `
             <h2>TOURNAMENT STANDINGS</h2>
             <div class="action-buttons">
-                <button class="secondary-btn" onclick="tournamentApp.hideStandings()">← BACK</button>
+                <button class="secondary-btn" onclick="tournamentApp.hideStandings()">← BACK TO GAMES</button>
                 <button class="secondary-btn" onclick="tournamentApp.exportToExcel()">📊 EXCEL</button>
                 <button class="secondary-btn" onclick="tournamentApp.exportToWord()">📝 WORD</button>
             </div>
@@ -540,6 +602,7 @@ class TournamentApp {
             TournamentDB.importFromFile(file)
                 .then(data => {
                     this.restoreTournament(data);
+                    alert('TOURNAMENT LOADED SUCCESSFULLY!');
                 })
                 .catch(error => {
                     alert('ERROR LOADING FILE: ' + error);
@@ -582,6 +645,8 @@ class TournamentApp {
         
         const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
         Utils.downloadBlob(blob, `tournament_${Utils.formatDate()}.csv`);
+        
+        this.showSubmissionConfirmation({ white: { name: 'EXPORT' }, black: { name: 'COMPLETE' }, whiteScore: 'CSV', blackScore: '' });
     }
 
     exportToWord() {
@@ -611,9 +676,9 @@ class TournamentApp {
             </head>
             <body>
                 <h1>♞ CHESS TOURNAMENT RESULTS ♞</h1>
-                <p>Date: ${date}</p>
-                <p>Players: ${this.tournament.getActivePlayers().length}</p>
-                <p>Rounds: ${this.tournament.rounds}</p>
+                <p><strong>Date:</strong> ${date}</p>
+                <p><strong>Players:</strong> ${this.tournament.getActivePlayers().length}</p>
+                <p><strong>Rounds:</strong> ${this.tournament.rounds}</p>
                 
                 ${this.tournament.completed ? 
                     `<h2>🏆 WINNER: ${winner.name} (${winner.score} POINTS)</h2>` : ''}
@@ -636,6 +701,8 @@ class TournamentApp {
         
         const blob = new Blob([wordContent], { type: 'application/msword' });
         Utils.downloadBlob(blob, `tournament_${Utils.formatDate()}.doc`);
+        
+        this.showSubmissionConfirmation({ white: { name: 'EXPORT' }, black: { name: 'COMPLETE' }, whiteScore: 'WORD', blackScore: '' });
     }
 
     reset() {
@@ -654,6 +721,8 @@ class TournamentApp {
             document.getElementById('rounds').value = '5';
             
             TournamentDB.clearAutoSave();
+            
+            this.showSubmissionConfirmation({ white: { name: 'RESET' }, black: { name: 'COMPLETE' }, whiteScore: '✓', blackScore: '' });
         }
     }
 }
