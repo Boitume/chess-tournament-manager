@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chess-tournament-v1';
+const CACHE_NAME = 'chess-tournament-v2';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',
@@ -9,8 +9,15 @@ const ASSETS_TO_CACHE = [
     '/js/utils.js',
     '/js/db.js',
     '/manifest.json',
-    '/assets/icons/chess-icon.svg',
-    'https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600&display=swap'
+    '/assets/icons/icon-72x72.png',
+    '/assets/icons/icon-96x96.png',
+    '/assets/icons/icon-128x128.png',
+    '/assets/icons/icon-144x144.png',
+    '/assets/icons/icon-152x152.png',
+    '/assets/icons/icon-192x192.png',
+    '/assets/icons/icon-384x384.png',
+    '/assets/icons/icon-512x512.png',
+    'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap'
 ];
 
 // Install event - cache assets
@@ -37,13 +44,16 @@ self.addEventListener('activate', (event) => {
                     }
                 })
             );
-        }).then(() => self.clients.claim())
+        }).then(() => {
+            console.log('Service Worker activated');
+            return self.clients.claim();
+        })
     );
 });
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
-    // Skip cross-origin requests
+    // Skip cross-origin requests except fonts
     if (!event.request.url.startsWith(self.location.origin) && 
         !event.request.url.includes('fonts.googleapis.com')) {
         return;
@@ -73,9 +83,9 @@ self.addEventListener('fetch', (event) => {
                         return response;
                     })
                     .catch(() => {
-                        // If both cache and network fail, show offline page
+                        // If both cache and network fail, return offline page
                         if (event.request.mode === 'navigate') {
-                            return caches.match('/offline.html');
+                            return caches.match('/');
                         }
                     });
             })
@@ -89,6 +99,45 @@ self.addEventListener('sync', (event) => {
     }
 });
 
+// Push notifications for tournament updates
+self.addEventListener('push', (event) => {
+    const options = {
+        body: event.data.text(),
+        icon: 'assets/icons/icon-192x192.png',
+        badge: 'assets/icons/icon-72x72.png',
+        vibrate: [100, 50, 100],
+        data: {
+            dateOfArrival: Date.now(),
+            primaryKey: 1
+        },
+        actions: [
+            {
+                action: 'open',
+                title: 'Open Tournament'
+            },
+            {
+                action: 'close',
+                title: 'Close'
+            }
+        ]
+    };
+
+    event.waitUntil(
+        self.registration.showNotification('Chess Tournament', options)
+    );
+});
+
+// Notification click handler
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    
+    if (event.action === 'open') {
+        event.waitUntil(
+            clients.openWindow('/')
+        );
+    }
+});
+
 // Function to sync tournaments when back online
 async function syncTournaments() {
     try {
@@ -96,10 +145,20 @@ async function syncTournaments() {
         const unsynced = await db.getAll('unsynced');
         
         for (const item of unsynced) {
-            // In a real app, you'd send this to a server
             console.log('Syncing:', item);
+            // In a real app, you'd send this to a server
             await db.delete('unsynced', item.id);
         }
+        
+        // Notify all clients that sync is complete
+        const clients = await self.clients.matchAll();
+        clients.forEach(client => {
+            client.postMessage({
+                type: 'SYNC_COMPLETE',
+                message: 'Tournament data synced successfully'
+            });
+        });
+        
     } catch (error) {
         console.log('Sync failed:', error);
     }
@@ -108,7 +167,7 @@ async function syncTournaments() {
 // Helper to open IndexedDB
 function openDB() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('TournamentDB', 1);
+        const request = indexedDB.open('TournamentDB', 2);
         
         request.onerror = () => reject(request.error);
         request.onsuccess = () => resolve(request.result);
@@ -116,7 +175,7 @@ function openDB() {
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
             if (!db.objectStoreNames.contains('tournaments')) {
-                db.createObjectStore('tournaments', { keyPath: 'id' });
+                db.createObjectStore('tournaments', { keyPath: 'tournamentId' });
             }
             if (!db.objectStoreNames.contains('unsynced')) {
                 db.createObjectStore('unsynced', { keyPath: 'id', autoIncrement: true });
@@ -124,3 +183,10 @@ function openDB() {
         };
     });
 }
+
+// Handle messages from clients
+self.addEventListener('message', (event) => {
+    if (event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});

@@ -8,6 +8,7 @@ class TournamentApp {
         this.autoSaveInterval = null;
         this.deferredPrompt = null;
         this.pendingScores = {}; // Store scores before submission
+        this.wakeLock = null;
         
         // Bind methods
         this.initialize = this.initialize.bind(this);
@@ -22,6 +23,12 @@ class TournamentApp {
         this.removePlayerField = this.removePlayerField.bind(this);
         this.exportToExcel = this.exportToExcel.bind(this);
         this.exportToWord = this.exportToWord.bind(this);
+        this.installApp = this.installApp.bind(this);
+        this.dismissInstallPrompt = this.dismissInstallPrompt.bind(this);
+        this.shareTournament = this.shareTournament.bind(this);
+        this.checkInstallability = this.checkInstallability.bind(this);
+        this.requestWakeLock = this.requestWakeLock.bind(this);
+        this.monitorStorage = this.monitorStorage.bind(this);
         
         // Setup event listeners
         this.setupEventListeners();
@@ -34,6 +41,12 @@ class TournamentApp {
         
         // Setup install prompt
         this.setupInstallPrompt();
+        
+        // Check installability
+        this.checkInstallability();
+        
+        // Monitor storage
+        this.monitorStorage();
         
         // Initialize with default players
         setTimeout(() => {
@@ -113,6 +126,70 @@ class TournamentApp {
                 TournamentDB.autoSave(this.tournament.exportData());
             }
         });
+        
+        // Listen for visibility change for wake lock
+        document.addEventListener('visibilitychange', () => {
+            if (this.tournament && document.visibilityState === 'visible') {
+                this.requestWakeLock();
+            }
+        });
+        
+        // Listen for app installed
+        window.addEventListener('appinstalled', (e) => {
+            console.log('App was installed');
+            document.body.classList.add('installed');
+            this.showSimpleConfirmation('APP INSTALLED SUCCESSFULLY!');
+        });
+    }
+
+    checkInstallability() {
+        // Check if app is already installed
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('App is installed and running in standalone mode');
+            document.body.classList.add('installed');
+        }
+    }
+
+    async requestWakeLock() {
+        if ('wakeLock' in navigator) {
+            try {
+                this.wakeLock = await navigator.wakeLock.request('screen');
+                this.wakeLock.addEventListener('release', () => {
+                    console.log('Wake Lock was released');
+                });
+                console.log('Wake Lock is active');
+            } catch (err) {
+                console.log('Wake Lock error:', err);
+            }
+        }
+    }
+
+    async monitorStorage() {
+        const estimate = await TournamentDB.getStorageEstimate();
+        if (estimate) {
+            console.log(`Storage usage: ${(estimate.usage / 1024 / 1024).toFixed(2)} MB / ${(estimate.quota / 1024 / 1024).toFixed(2)} MB (${estimate.percentage}%)`);
+            
+            // Warn if storage is getting full
+            if (estimate.percentage > 80) {
+                this.showStorageWarning();
+            }
+        }
+    }
+
+    showStorageWarning() {
+        const warning = document.createElement('div');
+        warning.className = 'storage-warning';
+        warning.innerHTML = `
+            <span>⚠️ STORAGE ALMOST FULL</span>
+            <button onclick="this.parentElement.remove()">DISMISS</button>
+        `;
+        document.querySelector('.container').prepend(warning);
+        
+        setTimeout(() => {
+            if (warning.parentNode) {
+                warning.remove();
+            }
+        }, 10000);
     }
 
     setupInstallPrompt() {
@@ -120,26 +197,61 @@ class TournamentApp {
             e.preventDefault();
             this.deferredPrompt = e;
             
-            // Show install prompt after 1 minute
-            setTimeout(() => {
-                this.showInstallPrompt();
-            }, 60000);
+            // Check if prompt was dismissed recently
+            const lastDismissed = localStorage.getItem('installPromptDismissed');
+            const oneDay = 24 * 60 * 60 * 1000;
+            
+            if (!lastDismissed || (Date.now() - parseInt(lastDismissed)) > oneDay) {
+                // Show install prompt after 30 seconds
+                setTimeout(() => {
+                    this.showInstallPrompt();
+                }, 30000);
+            }
         });
     }
 
     showInstallPrompt() {
         if (!this.deferredPrompt) return;
         
+        // Don't show if already installed
+        if (window.matchMedia('(display-mode: standalone)').matches) return;
+        
+        // Don't show if there's already a prompt
+        if (document.querySelector('.install-prompt')) return;
+        
         const installDiv = document.createElement('div');
         installDiv.className = 'install-prompt';
         installDiv.innerHTML = `
-            <span>📱 INSTALL APP FOR OFFLINE USE</span>
-            <div>
-                <button class="primary-btn" onclick="tournamentApp.installApp()">INSTALL</button>
-                <button class="danger-btn" onclick="this.parentElement.parentElement.remove()">LATER</button>
+            <div class="install-content">
+                <span class="install-icon">📱</span>
+                <div class="install-text">
+                    <strong>Install Chess Tournament Manager</strong>
+                    <small>Works offline • Auto-saves • No ads</small>
+                </div>
+                <div class="install-buttons">
+                    <button class="primary-btn" onclick="tournamentApp.installApp()">INSTALL</button>
+                    <button class="danger-btn" onclick="tournamentApp.dismissInstallPrompt(this)">LATER</button>
+                </div>
             </div>
         `;
-        document.querySelector('.container').prepend(installDiv);
+        document.body.appendChild(installDiv);
+        
+        // Auto-dismiss after 30 seconds
+        setTimeout(() => {
+            if (installDiv.parentNode) {
+                installDiv.remove();
+            }
+        }, 30000);
+    }
+
+    dismissInstallPrompt(button) {
+        const prompt = button.closest('.install-prompt');
+        if (prompt) {
+            prompt.remove();
+            
+            // Store dismissal in localStorage to not show again today
+            localStorage.setItem('installPromptDismissed', Date.now());
+        }
     }
 
     installApp() {
@@ -150,10 +262,46 @@ class TournamentApp {
         this.deferredPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
                 console.log('User accepted install');
+                this.showSimpleConfirmation('INSTALLING...');
             }
             this.deferredPrompt = null;
             document.querySelector('.install-prompt')?.remove();
         });
+    }
+
+    async shareTournament() {
+        if (!this.tournament) {
+            alert('NO ACTIVE TOURNAMENT');
+            return;
+        }
+        
+        const winner = this.tournament.completed ? this.tournament.getWinner() : null;
+        const shareData = {
+            title: 'Chess Tournament',
+            text: `Tournament: ${this.tournament.tournamentName || 'Current Tournament'}\n` +
+                  `Rounds: ${this.tournament.currentRound}/${this.tournament.rounds}\n` +
+                  `Players: ${this.tournament.getActivePlayers().length}\n` +
+                  (winner ? `Winner: ${winner.name} (${winner.score} points)` : ''),
+            url: window.location.href
+        };
+        
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+                this.showSimpleConfirmation('SHARED!');
+            } catch (err) {
+                console.log('Share cancelled:', err);
+            }
+        } else {
+            // Fallback - copy to clipboard
+            try {
+                await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
+                this.showSimpleConfirmation('COPIED TO CLIPBOARD!');
+            } catch (err) {
+                console.log('Clipboard error:', err);
+                alert('Press Ctrl+C to copy the tournament info');
+            }
+        }
     }
 
     async checkForAutoSave() {
@@ -187,13 +335,25 @@ class TournamentApp {
         
         this.showTournamentContent();
         this.displayRound(this.tournament.currentRound);
+        
+        // Request wake lock since tournament is active
+        this.requestWakeLock();
     }
 
     handleOnlineStatus() {
         if (navigator.onLine) {
             console.log('Back online!');
+            this.showSimpleConfirmation('BACK ONLINE!');
+            
+            // Try to sync if there's a tournament
+            if (this.tournament && 'serviceWorker' in navigator && 'SyncManager' in window) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.sync.register('sync-tournaments');
+                });
+            }
         } else {
             console.log('Working offline');
+            this.showSimpleConfirmation('OFFLINE MODE');
         }
     }
 
@@ -220,6 +380,9 @@ class TournamentApp {
         
         this.showTournamentContent();
         this.displayRound(1);
+        
+        // Request wake lock for active tournament
+        this.requestWakeLock();
     }
 
     showTournamentContent() {
@@ -250,6 +413,7 @@ class TournamentApp {
                 </button>
                 <button class="secondary-btn" onclick="tournamentApp.showStandings()">📊 STANDINGS</button>
                 <button class="secondary-btn" onclick="tournamentApp.saveToFile()">💾 SAVE</button>
+                <button class="share-btn" onclick="tournamentApp.shareTournament()">📱 SHARE</button>
             </div>
 
             <div id="pairings"></div>
@@ -512,6 +676,12 @@ class TournamentApp {
         
         this.showWinner();
         this.showStandings();
+        
+        // Release wake lock
+        if (this.wakeLock) {
+            this.wakeLock.release();
+            this.wakeLock = null;
+        }
     }
 
     showWinner() {
@@ -572,6 +742,7 @@ class TournamentApp {
                 <button class="secondary-btn" onclick="tournamentApp.hideStandings()">← BACK TO GAMES</button>
                 <button class="secondary-btn" onclick="tournamentApp.exportToExcel()">📊 EXCEL</button>
                 <button class="secondary-btn" onclick="tournamentApp.exportToWord()">📝 WORD</button>
+                <button class="share-btn" onclick="tournamentApp.shareTournament()">📱 SHARE</button>
             </div>
             <div class="standings-table-container">
                 <table>
@@ -866,6 +1037,12 @@ class TournamentApp {
             });
             
             this.showSimpleConfirmation('RESET COMPLETE');
+            
+            // Release wake lock
+            if (this.wakeLock) {
+                this.wakeLock.release();
+                this.wakeLock = null;
+            }
         }
     }
 }

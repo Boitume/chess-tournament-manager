@@ -2,13 +2,48 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>♞ Chess Tournament Manager - Black Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>♞ Chess Tournament Manager</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#000000">
+    
+    <!-- Primary Meta Tags -->
+    <meta name="title" content="Chess Tournament Manager">
+    <meta name="description" content="Professional chess tournament management with Swiss pairing, South African ratings, and tie-breakers">
+    <meta name="theme-color" content="#00ff88">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Chess Tourney">
+    
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="assets/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="assets/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="167x152" href="assets/icons/icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/icon-192x192.png">
+    
+    <!-- Microsoft Tiles -->
+    <meta name="msapplication-TileColor" content="#00ff88">
+    <meta name="msapplication-TileImage" content="assets/icons/icon-144x144.png">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://chess-tournament-manager.onrender.com">
+    <meta property="og:title" content="Chess Tournament Manager">
+    <meta property="og:description" content="Professional chess tournament management with Swiss pairing">
+    <meta property="og:image" content="assets/icons/icon-512x512.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://chess-tournament-manager.onrender.com">
+    <meta property="twitter:title" content="Chess Tournament Manager">
+    <meta property="twitter:description" content="Professional chess tournament management">
+    <meta property="twitter:image" content="assets/icons/icon-512x512.png">
+    
+    <!-- Preconnect to fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
@@ -16,7 +51,7 @@
         
         <!-- Offline Status Indicator -->
         <div id="offlineStatus" class="offline-status" style="display: none;">
-            ⚡ OFFLINE MODE - Changes saved locally
+            OFFLINE MODE - Changes saved locally
         </div>
         
         <!-- Tournament Setup Section -->
@@ -34,7 +69,7 @@
                 </div>
                 
                 <div class="players-help-text">
-                    <span class="info-icon">ⓘ</span> Zero ratings allowed (for unrated players)
+                    <span class="info-icon">ⓘ</span> Zero ratings allowed for unrated players
                 </div>
             </div>
             
@@ -44,10 +79,11 @@
             </div>
             
             <div class="action-buttons">
-                <button onclick="tournamentApp.initialize()" class="primary-btn">▶ START TOURNAMENT</button>
+                <button onclick="tournamentApp.initialize()" class="primary-btn">▶ START</button>
                 <button onclick="tournamentApp.reset()" class="danger-btn">⟲ RESET</button>
                 <button onclick="tournamentApp.saveToFile()" class="secondary-btn">💾 SAVE</button>
                 <button onclick="tournamentApp.loadFromFile()" class="secondary-btn">📂 LOAD</button>
+                <button onclick="tournamentApp.shareTournament()" class="share-btn">📱 SHARE</button>
             </div>
         </div>
 
@@ -70,6 +106,23 @@
                 navigator.serviceWorker.register('service-worker.js')
                     .then(registration => {
                         console.log('ServiceWorker registered');
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            console.log('New service worker installing');
+                            
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New version available
+                                    if (confirm('New version available! Update now?')) {
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                        
                         updateOnlineStatus();
                         window.addEventListener('online', updateOnlineStatus);
                         window.addEventListener('offline', updateOnlineStatus);
@@ -78,16 +131,30 @@
                         console.log('ServiceWorker registration failed: ', err);
                     });
             });
+            
+            // Listen for messages from service worker
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                if (event.data.type === 'SYNC_COMPLETE') {
+                    console.log('Sync complete:', event.data.message);
+                }
+            });
         }
         
         function updateOnlineStatus() {
             const offlineStatus = document.getElementById('offlineStatus');
             if (!navigator.onLine) {
-                offlineStatus.style.display = 'block';
+                offlineStatus.style.display = 'flex';
             } else {
                 offlineStatus.style.display = 'none';
             }
         }
+        
+        // Prevent double-tap zoom on buttons
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('button')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
     </script>
 
     <script src="js/utils.js"></script>

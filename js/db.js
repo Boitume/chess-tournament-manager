@@ -1,7 +1,7 @@
 // IndexedDB wrapper for offline storage
 const TournamentDB = {
     dbName: 'TournamentDB',
-    dbVersion: 2, // Increment version for schema change
+    dbVersion: 2,
     db: null,
 
     // Initialize database
@@ -36,12 +36,16 @@ const TournamentDB = {
                 if (db.objectStoreNames.contains('autoSave')) {
                     db.deleteObjectStore('autoSave');
                 }
+                if (db.objectStoreNames.contains('unsynced')) {
+                    db.deleteObjectStore('unsynced');
+                }
                 
                 // Create stores with proper key paths
                 db.createObjectStore('tournaments', { keyPath: 'tournamentId' });
                 db.createObjectStore('players', { keyPath: 'id', autoIncrement: true });
                 db.createObjectStore('settings', { keyPath: 'key' });
-                db.createObjectStore('autoSave', { keyPath: 'id' }); // Use 'id' as key path
+                db.createObjectStore('autoSave', { keyPath: 'id' });
+                db.createObjectStore('unsynced', { keyPath: 'id', autoIncrement: true });
             };
         });
     },
@@ -72,6 +76,14 @@ const TournamentDB = {
             
             request.onsuccess = () => {
                 console.log('Tournament saved to IndexedDB');
+                
+                // Try to sync if online
+                if (navigator.onLine && 'serviceWorker' in navigator && 'SyncManager' in window) {
+                    navigator.serviceWorker.ready.then(registration => {
+                        registration.sync.register('sync-tournaments');
+                    });
+                }
+                
                 resolve(request.result);
             };
             
@@ -129,7 +141,7 @@ const TournamentDB = {
             const store = transaction.objectStore('autoSave');
             
             const autoSaveData = {
-                id: 'current', // Use 'id' as key
+                id: 'current',
                 timestamp: Date.now(),
                 state: state
             };
@@ -233,6 +245,19 @@ const TournamentDB = {
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
         });
+    },
+
+    // Get storage estimate
+    async getStorageEstimate() {
+        if ('storage' in navigator && 'estimate' in navigator.storage) {
+            const estimate = await navigator.storage.estimate();
+            return {
+                usage: estimate.usage,
+                quota: estimate.quota,
+                percentage: ((estimate.usage / estimate.quota) * 100).toFixed(2)
+            };
+        }
+        return null;
     }
 };
 

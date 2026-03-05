@@ -970,3 +970,175 @@ td {
     font-size: 12px;
     font-weight: 600;
 }
+/* Add to style.css */
+
+/* Install Prompt */
+.install-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    background: var(--bg-tertiary);
+    border: 2px solid var(--accent-primary);
+    border-radius: 16px;
+    padding: 16px;
+    z-index: 2000;
+    max-width: 400px;
+    margin: 0 auto;
+    box-shadow: 0 10px 40px rgba(0, 255, 136, 0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.install-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.install-icon {
+    font-size: 32px;
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    width: 50px;
+    height: 50px;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.install-text {
+    flex: 1;
+}
+
+.install-text strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.install-text small {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.install-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.install-buttons button {
+    padding: 8px 16px;
+    font-size: 14px;
+    min-height: auto;
+}
+
+/* Storage Warning */
+.storage-warning {
+    background: var(--warning);
+    color: var(--bg-primary);
+    padding: 12px 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    animation: pulse 2s infinite;
+}
+
+.storage-warning button {
+    background: var(--bg-primary);
+    color: var(--warning);
+    padding: 6px 12px;
+    font-size: 12px;
+    min-height: auto;
+}
+
+/* Installed state styles */
+.installed .install-prompt {
+    display: none;
+}
+
+.installed .offline-status {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
+/* PWA specific */
+@media all and (display-mode: standalone) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .container {
+        border-radius: 0;
+        min-height: 100vh;
+    }
+    
+    h1 {
+        margin-top: env(safe-area-inset-top);
+    }
+}
+
+/* Add to existing button group */
+.share-btn {
+    background: var(--accent-tertiary);
+    color: var(--bg-primary);
+}
+
+.share-btn:hover {
+    background: #ff9900;
+}
+
+/* Add these to action-buttons */
+.action-buttons .share-btn {
+    background: var(--accent-tertiary);
+    color: var(--bg-primary);
+}
+
+/* Offline indicator enhancement */
+.offline-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.offline-status::before {
+    content: "⚡";
+    font-size: 20px;
+}
+
+/* Loading states */
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Toast notifications */
+.toast {
+    position: fixed;
+    bottom: 80px;
+    left: 20px;
+    right: 20px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    padding: 12px 20px;
+    border-radius: 30px;
+    text-align: center;
+    font-weight: 600;
+    z-index: 1500;
+    border: 2px solid var(--accent-primary);
+    max-width: 300px;
+    margin: 0 auto;
+    animation: slideUp 0.3s, fadeOut 0.3s 2.7s;
+}

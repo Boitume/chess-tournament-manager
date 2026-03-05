@@ -1,12 +1,16 @@
 {
     "name": "Chess Tournament Manager",
     "short_name": "Chess Tourney",
-    "description": "Manage chess tournaments with South African ratings - works offline",
+    "description": "Professional chess tournament management with Swiss pairing, South African ratings, and tie-breakers",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#667eea",
-    "theme_color": "#667eea",
-    "orientation": "portrait",
+    "background_color": "#000000",
+    "theme_color": "#00ff88",
+    "orientation": "any",
+    "scope": "/",
+    "categories": ["sports", "utilities", "games"],
+    "lang": "en",
+    "dir": "ltr",
     "icons": [
         {
             "src": "assets/icons/icon-72x72.png",
@@ -55,6 +59,35 @@
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
+        },
+        {
+            "src": "assets/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "assets/screenshots/setup.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "platform": "wide",
+            "label": "Tournament Setup Screen"
+        },
+        {
+            "src": "assets/screenshots/pairings.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "platform": "wide",
+            "label": "Round Pairings"
+        },
+        {
+            "src": "assets/screenshots/standings.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "platform": "wide",
+            "label": "Tournament Standings with Tie-breakers"
         }
     ],
     "shortcuts": [
@@ -71,9 +104,20 @@
             "description": "Continue last tournament",
             "url": "/?continue",
             "icons": [{ "src": "assets/icons/icon-192x192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "View Standings",
+            "short_name": "Standings",
+            "description": "View current standings",
+            "url": "/?standings",
+            "icons": [{ "src": "assets/icons/icon-192x192.png", "sizes": "192x192" }]
         }
     ],
-    "categories": ["sports", "utilities"],
-    "lang": "en",
-    "dir": "ltr"
+    "related_applications": [],
+    "prefer_related_applications": false,
+    "display_override": ["standalone", "fullscreen", "minimal-ui"],
+    "edge_side_panel": {},
+    "launch_handler": {
+        "client_mode": ["focus-existing", "auto"]
+    }
 }
