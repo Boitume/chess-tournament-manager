@@ -68,11 +68,6 @@ class Tournament {
             this.players[whiteIndex].score += whiteScore;
             this.players[whiteIndex].opponents.push(blackPlayer.name);
             this.players[whiteIndex].colors.push('W');
-            
-            // Track black wins for tie-breaker
-            if (whiteScore === 1) {
-                // White win (not black)
-            }
         }
         
         if (blackIndex !== -1) {
@@ -97,12 +92,19 @@ class Tournament {
             
             let sb = 0;
             player.opponents.forEach((oppName, index) => {
+                if (!oppName) return;
+                
                 const opponent = this.players.find(p => p.name === oppName);
                 if (opponent) {
                     const color = player.colors[index];
-                    const gameScore = color === 'W' ? 
-                        this.getGameScore(player.name, oppName) : 
-                        this.getGameScore(oppName, player.name);
+                    
+                    // Get the score from the game
+                    let gameScore = 0;
+                    if (color === 'W') {
+                        gameScore = this.getGameScore(player.name, oppName);
+                    } else if (color === 'B') {
+                        gameScore = this.getGameScore(oppName, player.name);
+                    }
                     
                     // Sonneborn-Berger: sum of opponents' scores that player beat
                     if (gameScore === 1) {
@@ -120,13 +122,26 @@ class Tournament {
 
     // Helper to get game score between two players
     getGameScore(player1Name, player2Name) {
+        if (!player1Name || !player2Name) return 0;
+        
         for (const round of this.pairings) {
+            if (!round) continue;
+            
             for (const pairing of round) {
-                if (pairing.white.name === player1Name && pairing.black.name === player2Name) {
-                    return pairing.whiteScore;
+                if (!pairing) continue;
+                
+                // Safely check if pairing has white and black players
+                const whiteName = pairing.white && pairing.white.name ? pairing.white.name : null;
+                const blackName = pairing.black && pairing.black.name ? pairing.black.name : null;
+                
+                if (!whiteName || !blackName) continue;
+                
+                // Check if this pairing matches the players
+                if (whiteName === player1Name && blackName === player2Name) {
+                    return pairing.whiteScore !== undefined ? pairing.whiteScore : 0;
                 }
-                if (pairing.white.name === player2Name && pairing.black.name === player1Name) {
-                    return pairing.blackScore;
+                if (whiteName === player2Name && blackName === player1Name) {
+                    return pairing.blackScore !== undefined ? pairing.blackScore : 0;
                 }
             }
         }

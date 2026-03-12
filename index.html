@@ -28,14 +28,14 @@
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://chess-tournament-manager.onrender.com">
+    <meta property="og:url" content="https://chess-tournament-manager-o2nw.onrender.com">
     <meta property="og:title" content="Chess Tournament Manager">
     <meta property="og:description" content="Professional chess tournament management with Swiss pairing">
     <meta property="og:image" content="assets/icons/icon-512x512.png">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://chess-tournament-manager.onrender.com">
+    <meta property="twitter:url" content="https://chess-tournament-manager-o2nw.onrender.com">
     <meta property="twitter:title" content="Chess Tournament Manager">
     <meta property="twitter:description" content="Professional chess tournament management">
     <meta property="twitter:image" content="assets/icons/icon-512x512.png">
@@ -44,6 +44,86 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Icon Fallback Script - Prevents 404 errors -->
+    <script>
+        // Create fallback icons dynamically if files are missing
+        (function createFallbackIcons() {
+            // Only run if we're on the rendered site (not localhost)
+            if (window.location.hostname.includes('onrender.com')) {
+                console.log('Setting up fallback icons for Render deployment');
+                
+                // Function to create data URL for icon
+                function createIconDataURL(size, text) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = size;
+                    canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Black background
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, size, size);
+                    
+                    // Green border
+                    ctx.strokeStyle = '#00ff88';
+                    ctx.lineWidth = Math.max(2, size/50);
+                    ctx.strokeRect(2, 2, size-4, size-4);
+                    
+                    // Chess knight
+                    ctx.fillStyle = '#00ff88';
+                    ctx.font = `${size/2}px Arial, 'Segoe UI', sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(text || '♞', size/2, size/2);
+                    
+                    return canvas.toDataURL('image/png');
+                }
+                
+                // Intercept link and image errors
+                window.addEventListener('error', function(e) {
+                    // Handle favicon errors
+                    if (e.target.tagName === 'LINK' && e.target.rel === 'icon') {
+                        e.preventDefault();
+                        console.log('Icon not found, using fallback');
+                        
+                        // Create fallback favicon
+                        const link = document.querySelector('link[rel="icon"]') || document.createElement('link');
+                        link.rel = 'icon';
+                        link.href = createIconDataURL(32, '♞');
+                        document.head.appendChild(link);
+                    }
+                    
+                    // Handle apple touch icon errors
+                    if (e.target.tagName === 'LINK' && e.target.rel === 'apple-touch-icon') {
+                        e.preventDefault();
+                        console.log('Apple touch icon not found, using fallback');
+                    }
+                    
+                    // Handle image errors
+                    if (e.target.tagName === 'IMG') {
+                        e.preventDefault();
+                        console.log('Image not found:', e.target.src);
+                    }
+                }, true);
+                
+                // Also pre-create manifest icons check
+                setTimeout(() => {
+                    // Check if manifest icons are loading
+                    const links = document.querySelectorAll('link[rel="apple-touch-icon"]');
+                    links.forEach(link => {
+                        const img = new Image();
+                        img.onerror = () => {
+                            console.log('Fixing broken apple touch icon');
+                            // Replace with data URL
+                            const size = link.sizes ? parseInt(link.sizes.toString()) : 192;
+                            link.href = createIconDataURL(size, '♞');
+                        };
+                        img.src = link.href;
+                    });
+                }, 1000);
+            }
+        })();
+    </script>
 </head>
 <body>
     <div class="container">
@@ -155,12 +235,33 @@
                 e.preventDefault();
             }
         }, { passive: false });
+        
+        // Log when app is installed
+        window.addEventListener('appinstalled', (e) => {
+            console.log('App was installed');
+            // Show a small notification
+            const indicator = document.getElementById('autoSaveIndicator');
+            indicator.textContent = '✓ APP INSTALLED';
+            indicator.style.display = 'block';
+            setTimeout(() => {
+                indicator.style.display = 'none';
+                indicator.textContent = '💾 AUTO-SAVED';
+            }, 3000);
+        });
     </script>
 
-    <script src="js/utils.js"></script>
-    <script src="js/db.js"></script>
-    <script src="js/tournament.js"></script>
-    <script src="js/pairing.js"></script>
-    <script src="js/app.js"></script>
+    <!-- Preload critical scripts -->
+    <link rel="preload" href="js/utils.js" as="script">
+    <link rel="preload" href="js/db.js" as="script">
+    <link rel="preload" href="js/tournament.js" as="script">
+    <link rel="preload" href="js/pairing.js" as="script">
+    <link rel="preload" href="js/app.js" as="script">
+    
+    <!-- Scripts with defer for better performance -->
+    <script src="js/utils.js" defer></script>
+    <script src="js/db.js" defer></script>
+    <script src="js/tournament.js" defer></script>
+    <script src="js/pairing.js" defer></script>
+    <script src="js/app.js" defer></script>
 </body>
 </html>

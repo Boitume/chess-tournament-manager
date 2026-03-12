@@ -1038,7 +1038,6 @@ class TournamentApp {
             
             this.showSimpleConfirmation('RESET COMPLETE');
             
-            // Release wake lock
             if (this.wakeLock) {
                 this.wakeLock.release();
                 this.wakeLock = null;
@@ -1047,7 +1046,7 @@ class TournamentApp {
     }
 }
 
-// Initialize app when page loads
+
 document.addEventListener('DOMContentLoaded', () => {
     window.tournamentApp = new TournamentApp();
 });
